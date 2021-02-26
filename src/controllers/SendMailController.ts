@@ -6,6 +6,7 @@ import { SurveysRepository } from "../repositories/SurveysRepository";
 import { SurveysUsersRepository } from "../repositories/SurveysUsersRepository";
 import { UsersRepository } from "../repositories/UsersRepository";
 import SendMailService from "../services/SendMailService";
+import { AppError } from "../errors/AppErrors";
 
 class SendMailController {
   async execute(request: Request, response: Response) {
@@ -18,35 +19,32 @@ class SendMailController {
     const user = await usersRepository.findOne({ email });
 
     if (!user) {
-      return response.status(400).json({
-        error: "User not found",
-      });
+      throw new AppError("User not found", 400);
     }
 
     const survey = await surveysRepository.findOne({ id: survey_id });
 
     if (!survey) {
-      return response.status(400).json({
-        error: "Survey not found",
-      });
+      throw new AppError("Survey not found");
     }
+
+    const npsPath = resolve(__dirname, "..", "views", "emails", "npsMail.hbs");
+
+    const surveyUserExists = await surveysUsersRepository.findOne({
+      where: { user_id: user.id, value: null },
+      relations: ["user", "survey"],
+    });
 
     const variables = {
       name: user.name,
       title: survey.title,
       description: survey.description,
-      user_id: user.id,
+      id: "",
       link: process.env.MAIL_URL,
     };
 
-    const npsPath = resolve(__dirname, "..", "views", "emails", "npsMail.hbs");
-
-    const surveyUserExists = await surveysUsersRepository.findOne({
-      where: [{ user_id: user.id }, { value: null }],
-      relations: ["user", "survey"],
-    });
-
     if (surveyUserExists) {
+      variables.id = surveyUserExists.id;
       await SendMailService.execute(email, survey.title, variables, npsPath);
       return response.json(surveyUserExists);
     }
@@ -57,6 +55,7 @@ class SendMailController {
     });
 
     await surveysUsersRepository.save(surveyUser);
+    variables.id = surveyUser.id;
 
     await SendMailService.execute(email, survey.title, variables, npsPath);
     return response.json(surveyUser);
