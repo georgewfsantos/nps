@@ -18,16 +18,16 @@ describe("Users", () => {
 
   it("Should be able to create a new user", async () => {
     const response = await request(app).post("/users").send({
-      email: "johndoe.com",
+      email: "johndoe@mail.com",
       name: "John Doe",
     });
 
     expect(response.status).toBe(201);
   });
 
-  it("should not be able to create new user if provided email is already taken", async () => {
+  it("Should not be able to create new user if provided email is already taken", async () => {
     const response = await request(app).post("/users").send({
-      email: "johndoe.com",
+      email: "johndoe@mail.com",
       name: "John Doe",
     });
 
